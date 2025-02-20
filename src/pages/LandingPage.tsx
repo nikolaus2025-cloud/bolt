@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useProductStore } from '../store/productStore';
 import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
-import { ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowLeft, Loader2 } from 'lucide-react';
 
 interface ShippingDetails {
   firstName: string;
@@ -131,8 +131,17 @@ export default function LandingPage() {
             }]
           });
         },
-        onApprove: async (data: any, _actions: any) => {
+        onApprove: async (data: any, actions: any) => {
           try {
+            // Capture the funds from the transaction
+            const details = await actions.order.capture();
+            console.log('Payment completed:', details);
+
+            if (details.status !== 'COMPLETED') {
+              throw new Error('Payment not completed');
+            }
+
+            // Insert order into database
             const { error } = await supabase.from('orders').insert([{
               first_name: shippingDetails.firstName,
               last_name: shippingDetails.lastName,
@@ -150,19 +159,60 @@ export default function LandingPage() {
               throw error;
             }
 
-            alert('Thank you for your purchase!');
-            // Refresh the page after successful purchase
-            window.location.reload();
+            // Show success modal after PayPal window is closed
+            setTimeout(async () => {
+              const result = await showSuccessModal();
+              if (result) {
+                window.location.reload();
+              }
+            }, 1000);
           } catch (error) {
             console.error('Error processing order:', error);
             alert('There was an error processing your order. Please contact support.');
           }
+        },
+        onCancel: () => {
+          console.log('Payment cancelled');
+        },
+        onError: (err: any) => {
+          console.error('PayPal error:', err);
+          alert('There was an error processing your payment. Please try again.');
         }
       }).render('#paypal-button-container');
     } catch (error) {
       console.error('PayPal error:', error);
       alert('There was an error processing your payment. Please try again.');
     }
+  };
+
+  const showSuccessModal = () => {
+    return new Promise((resolve) => {
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center';
+      modal.style.zIndex = '100000'; // Higher z-index than PayPal
+      modal.innerHTML = `
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4 text-center relative">
+          <div class="mb-4 flex justify-center">
+            <svg class="w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <h3 class="text-2xl font-bold text-gray-900 mb-4">Order Placed Successfully!</h3>
+          <p class="text-gray-600 mb-6">Thank you for your purchase. You will receive a confirmation email shortly.</p>
+          <button class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+            OK
+          </button>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+
+      const button = modal.querySelector('button');
+      button?.addEventListener('click', () => {
+        document.body.removeChild(modal);
+        resolve(true);
+      });
+    });
   };
 
   // Add back button handler
@@ -180,7 +230,15 @@ export default function LandingPage() {
     document.getElementById('shipping-form')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  if (!settings) return <div>Loading...</div>;
+  if (!settings) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+        <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Loading...</h2>
+        <p className="text-gray-500">Please wait while we prepare your experience</p>
+      </div>
+    );
+  }
 
   const finalPrice = settings.price - settings.discount;
   const isUSA = shippingDetails.country === 'usa';
@@ -198,7 +256,7 @@ export default function LandingPage() {
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-gray-900">Your Store Name</h1>
+          <h1 className="text-xl font-bold text-gray-900">GB Store</h1>
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-500">Limited Time Offer!</span>
             {settings.discount > 0 && (
