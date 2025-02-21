@@ -22,6 +22,7 @@ CREATE TABLE orders (
 -- Add RLS policies
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 
+-- Update the policies to be more permissive for authenticated users
 CREATE POLICY "Allow public to create orders"
   ON orders FOR INSERT TO public
   WITH CHECK (true);
@@ -30,6 +31,7 @@ CREATE POLICY "Allow authenticated users to view orders"
   ON orders FOR SELECT TO authenticated
   USING (true);
 
-CREATE POLICY "Allow authenticated users to update orders"
-  ON orders FOR UPDATE TO authenticated
-  USING (true); 
+CREATE POLICY "Allow authenticated users full access to orders"
+  ON orders FOR ALL TO authenticated
+  USING (true)
+  WITH CHECK (true); 

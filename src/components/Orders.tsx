@@ -52,40 +52,47 @@ export default function Orders() {
                   updates.status === 'shipped' ? 'mark as shipped' :
                   'mark as delivered';
     
-    // Confirmation dialog
     if (!confirm(`Are you sure you want to ${action} this order?`)) {
       return;
     }
 
     try {
-      const { error } = await supabase
+      console.log('Updating order:', orderId, updates); // Debug log
+
+      const { data, error } = await supabase
         .from('orders')
         .update({
-          ...updates,
-          shipping_notes: 
-            updates.status === 'shipped' ? `Order shipped on ${new Date().toLocaleDateString()}` :
-            updates.status === 'cancelled' ? `Order cancelled on ${new Date().toLocaleDateString()}` :
-            updates.status === 'delivered' ? `Order delivered on ${new Date().toLocaleDateString()}` :
-            updates.shipping_notes
+          status: updates.status,
+          shipping_notes: updates.status === 'shipped' 
+            ? `Order shipped on ${new Date().toLocaleDateString()}`
+            : updates.status === 'cancelled'
+            ? `Order cancelled on ${new Date().toLocaleDateString()}`
+            : `Order ${updates.status} on ${new Date().toLocaleDateString()}`
         })
-        .eq('id', orderId);
+        .eq('id', orderId)
+        .select() // Add this to get the updated record
+        .single();
 
       if (error) {
-        console.error('Error updating order:', error);
-        alert(`Failed to ${action} order. Please try again.`);
+        console.error('Supabase error:', error); // Debug log
         throw error;
       }
+
+      console.log('Updated order data:', data); // Debug log
+
+      // Update local state with the returned data
+      setOrders(orders.map(order => 
+        order.id === orderId ? { ...order, ...data } : order
+      ));
 
       alert(`Order successfully ${
         updates.status === 'cancelled' ? 'cancelled' : 
         updates.status === 'shipped' ? 'marked as shipped' :
         'marked as delivered'
       }`);
-      
-      // Refresh orders list after successful update
-      fetchOrders();
     } catch (error) {
       console.error('Error updating order:', error);
+      alert('Failed to update order status. Please try again.');
     }
   };
 

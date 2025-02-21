@@ -90,6 +90,7 @@ export default function LandingPage() {
     zipCode: ''
   });
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showVideo, setShowVideo] = useState(false);
   
   // Combine main image with additional images
   const images = settings ? [
@@ -251,12 +252,40 @@ export default function LandingPage() {
     setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
   };
 
+  const VideoModal = () => (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={() => setShowVideo(false)}
+    >
+      <div className="bg-white p-4 rounded-lg w-full max-w-3xl mx-4 relative" onClick={e => e.stopPropagation()}>
+        <button 
+          onClick={() => setShowVideo(false)}
+          className="absolute -top-4 -right-4 bg-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg hover:bg-gray-100"
+        >
+          <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <div className="relative pt-[56.25%]">
+          <iframe
+            className="absolute inset-0 w-full h-full"
+            src="https://www.youtube.com/embed/Zph7YXfjMhg?si=_DuTDPDblhSz8Jtc"
+            title="Product Video"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          ></iframe>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-gray-900">GB Store</h1>
+          <h1 className="text-xl font-bold text-gray-900">Ruby Store</h1>
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-500">Limited Time Offer!</span>
             {settings.discount > 0 && (
@@ -318,16 +347,40 @@ export default function LandingPage() {
                   </button>
                 </>
               )}
+
+              {/* Add this button below the carousel */}
+              <div className="flex justify-center mt-4">
+                <button
+                  onClick={() => setShowVideo(true)}
+                  className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
+                  </svg>
+                  Watch Video
+                </button>
+              </div>
             </div>
           )}
 
           <p className="text-xl text-gray-600 mb-8">{settings.description}</p>
           
-          <div className="mt-6 mb-8">
-            <span className="text-3xl font-bold text-gray-900">${finalPrice}</span>
-            {settings.discount > 0 && (
-              <span className="ml-2 text-lg text-gray-500 line-through">${settings.price}</span>
-            )}
+          <div className="mt-6 mb-8 flex flex-col items-center">
+            <div className="flex items-center gap-3">
+              <span className="text-4xl font-extrabold text-green-600">${finalPrice}</span>
+              {settings.discount > 0 && (
+                <>
+                  <span className="text-2xl text-gray-500 line-through">${settings.price}</span>
+                  <span className="bg-red-600 text-white px-3 py-1 rounded-full text-lg font-bold animate-pulse">
+                    Save ${settings.discount}!
+                  </span>
+                </>
+              )}
+            </div>
+            
+            <div className="mt-2 bg-yellow-100 text-yellow-800 px-4 py-1 rounded-full text-sm font-semibold">
+              Limited Time Offer! 🔥
+            </div>
           </div>
 
           <button
@@ -483,10 +536,10 @@ export default function LandingPage() {
           </form>
         ) : (
           <div className="bg-white p-8 rounded-lg shadow-lg">
-            <div className="flex items-center mb-6 relative">
+            <div className="flex flex-col sm:flex-row items-center mb-6">
               <button
                 onClick={handleBack}
-                className="flex items-center text-gray-600 hover:text-gray-900 transition-colors absolute left-0"
+                className="flex items-center text-gray-600 hover:text-gray-900 transition-colors mb-4 sm:mb-0 sm:absolute sm:left-8"
               >
                 <ArrowLeft className="w-5 h-5 mr-2" />
                 Back to Shipping Details
@@ -501,6 +554,8 @@ export default function LandingPage() {
       </div>
 
       <Footer />
+
+      {showVideo && <VideoModal />}
     </div>
   );
 }
