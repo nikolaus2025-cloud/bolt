@@ -1,6 +1,8 @@
 export const loadPayPalScript = () => {
   const script = document.createElement('script');
-  script.src = `https://www.paypal.com/sdk/js?client-id=${import.meta.env.VITE_PAYPAL_CLIENT_ID}&currency=USD`;
+  script.src = `https://www.paypal.com/sdk/js?client-id=${import.meta.env.VITE_PAYPAL_CLIENT_ID}&currency=USD&intent=capture`;
+  script.setAttribute('data-namespace', '');
+  script.setAttribute('data-environment', 'production');
   script.async = true;
   document.body.appendChild(script);
 };
