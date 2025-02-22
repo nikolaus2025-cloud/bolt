@@ -1,14 +1,8 @@
-import { loadScript } from "@paypal/paypal-js";
-
-export const loadPayPalScript = async () => {
-  try {
-    await loadScript({ 
-      clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID,
-      currency: "USD"
-    });
-  } catch (error) {
-    console.error("Failed to load PayPal script:", error);
-  }
+export const loadPayPalScript = () => {
+  const script = document.createElement('script');
+  script.src = `https://www.paypal.com/sdk/js?client-id=${import.meta.env.VITE_PAYPAL_CLIENT_ID}&currency=USD`;
+  script.async = true;
+  document.body.appendChild(script);
 };
 
 export const createPayPalOrder = async (amount: number) => {
