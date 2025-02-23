@@ -12,7 +12,7 @@ interface Order {
   country: string;
   address: string;
   zip_code: string;
-  status: 'pending' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'shipped' | 'delivered' | 'cancelled' | 'paid';
   tracking_number?: string;
   shipping_notes?: string;
 }
@@ -96,8 +96,32 @@ export default function Orders() {
     }
   };
 
+  const updateTrackingNumber = async (orderId: string, trackingNumber: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ tracking_number: trackingNumber })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      // Update local state
+      setOrders(orders.map(order => 
+        order.id === orderId 
+          ? { ...order, tracking_number: trackingNumber }
+          : order
+      ));
+
+      alert('Tracking number updated successfully!');
+    } catch (error) {
+      console.error('Error updating tracking number:', error);
+      alert('Failed to update tracking number. Please try again.');
+    }
+  };
+
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
+      case 'paid': return 'bg-green-100 text-green-800';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'shipped': return 'bg-blue-100 text-blue-800';
       case 'delivered': return 'bg-green-100 text-green-800';
@@ -187,6 +211,30 @@ export default function Orders() {
                   <CheckCircle className="w-4 h-4 mr-2" />
                   Mark as Delivered
                 </button>
+              </div>
+            )}
+
+            {order.status === 'shipped' && (
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tracking Number
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    defaultValue={order.tracking_number || ''}
+                    placeholder="Enter tracking number"
+                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    onBlur={(e) => updateTrackingNumber(order.id, e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
+            {order.tracking_number && order.status !== 'shipped' && (
+              <div className="mt-4 text-sm">
+                <span className="font-medium">Tracking Number: </span>
+                {order.tracking_number}
               </div>
             )}
 

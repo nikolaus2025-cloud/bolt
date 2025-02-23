@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useProductStore } from '../store/productStore';
 import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
-import { ChevronLeft, ChevronRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowLeft, Loader2, Package } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { sendOrderConfirmationEmail } from '../lib/mailgun';
 
 interface ShippingDetails {
   firstName: string;
@@ -134,7 +136,6 @@ export default function LandingPage() {
         },
         onApprove: async (data: any, actions: any) => {
           try {
-            // Capture the funds from the transaction
             const details = await actions.order.capture();
             console.log('Payment completed:', details);
 
@@ -143,7 +144,7 @@ export default function LandingPage() {
             }
 
             // Insert order into database
-            const { error } = await supabase.from('orders').insert([{
+            const { data: orderData, error } = await supabase.from('orders').insert([{
               first_name: shippingDetails.firstName,
               last_name: shippingDetails.lastName,
               email: shippingDetails.email,
@@ -152,15 +153,28 @@ export default function LandingPage() {
               address: shippingDetails.address,
               zip_code: shippingDetails.zipCode,
               paypal_order_id: data.orderID,
-              status: 'pending'
-            }]);
+              status: 'paid'
+            }]).select().single();
 
             if (error) {
               console.error('Error inserting order:', error);
               throw error;
             }
 
-            // Show success modal after PayPal window is closed
+            // Send confirmation email
+            try {
+              await sendOrderConfirmationEmail({
+                customerName: `${shippingDetails.firstName} ${shippingDetails.lastName}`,
+                orderNumber: orderData.id,
+                amount: settings ? (settings.price - settings.discount) : 0,
+                email: shippingDetails.email
+              });
+            } catch (emailError) {
+              console.error('Failed to send confirmation email:', emailError);
+              // Don't throw here - we don't want to interrupt the success flow
+            }
+
+            // Show success modal
             setTimeout(async () => {
               const result = await showSuccessModal();
               if (result) {
@@ -285,8 +299,19 @@ export default function LandingPage() {
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-gray-900">Ruby Store</h1>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-6">
+            <Link to="/" className="text-xl font-bold text-gray-900 hover:text-gray-700">
+              Ruby Store
+            </Link>
+          </div>
+          <div className="flex items-center space-x-6">
+            <Link 
+              to="/track" 
+              className="text-sm text-gray-600 hover:text-gray-900 flex items-center"
+            >
+              <Package className="w-4 h-4 mr-1" />
+              Track Order
+            </Link>
             <span className="text-sm text-gray-500">Limited Time Offer!</span>
             {settings.discount > 0 && (
               <span className="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded">
