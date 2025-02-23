@@ -174,7 +174,7 @@ export default function Orders() {
               </div>
             </div>
 
-            {order.status === 'pending' && (
+            {(order.status === 'pending' || order.status === 'paid') && (
               <div className="mt-4 flex space-x-4">
                 <button
                   onClick={() => updateOrderStatus(order.id, {

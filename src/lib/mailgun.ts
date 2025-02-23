@@ -10,31 +10,43 @@ interface OrderEmailData {
 }
 
 export const sendOrderConfirmationEmail = async (data: OrderEmailData) => {
-  const formData = new FormData();
-  formData.append('from', MAILGUN_FROM_EMAIL);
+  const formData = new URLSearchParams();
+  formData.append('from', `Ruby Store <${MAILGUN_FROM_EMAIL}>`);
   formData.append('to', data.email);
   formData.append('subject', 'Order Confirmation - Ruby Store');
-  formData.append('template', 'order');
-  formData.append('h:X-Mailgun-Variables', JSON.stringify({
-    customerName: data.customerName,
-    orderNumber: data.orderNumber,
-    amount: data.amount.toFixed(2)
-  }));
+  formData.append('text', `
+    Dear ${data.customerName},
+
+    Thank you for your order! 
+    
+    Order Details:
+    Order Number: ${data.orderNumber}
+    Total Amount: $${data.amount.toFixed(2)}
+
+    We'll process your order shortly.
+
+    Best regards,
+    Ruby Store Team
+  `);
 
   try {
-    const response = await fetch(`https://api.mailgun.net/v3/${MAILGUN_DOMAIN}/messages`, {
+    const response = await fetch(`https://api.eu.mailgun.net/v3/${MAILGUN_DOMAIN}/messages`, {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${btoa(`api:${MAILGUN_API_KEY}`)}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: formData
+      body: formData.toString()
     });
 
+    const responseData = await response.text();
+    console.log('Mailgun Response:', responseData);
+
     if (!response.ok) {
-      throw new Error(`Mailgun API error: ${response.statusText}`);
+      throw new Error(`Mailgun API error: ${response.status} ${responseData}`);
     }
 
-    return await response.json();
+    return JSON.parse(responseData);
   } catch (error) {
     console.error('Failed to send email:', error);
     throw error;
