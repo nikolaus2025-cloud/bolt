@@ -325,71 +325,72 @@ export default function LandingPage() {
       <div className="max-w-4xl mx-auto px-4 py-12">
         {/* Hero Section */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">{settings.title}</h1>
-          
-          {/* Image Carousel */}
+          {/* Image Slider */}
           {images.length > 0 && (
-            <div className="relative mb-8 group">
-              <div className="relative aspect-w-16 aspect-h-9">
+            <div className="max-w-2xl mx-auto py-8">
+              {/* Main Image Container - Updated to 336x600 */}
+              <div className="relative w-[344px] h-[628px] mb-4 mx-auto">
                 <img
                   src={images[currentImageIndex]}
                   alt={`${settings.title} - Image ${currentImageIndex + 1}`}
-                  className="mx-auto rounded-lg shadow-lg max-w-md w-full h-auto object-cover"
+                  className="w-full h-full object-contain"
                 />
-                
-                {/* Navigation Dots */}
-                {images.length > 1 && (
-                  <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-2">
-                    {images.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setCurrentImageIndex(index)}
-                        className={`w-2 h-2 rounded-full transition-colors ${
-                          index === currentImageIndex ? 'bg-white' : 'bg-white/50'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                )}
               </div>
 
-              {/* Navigation Arrows - Only show if there are multiple images */}
-              {images.length > 1 && (
-                <>
+              {/* Thumbnails Container */}
+              <div className="flex justify-center gap-2 mb-4">
+                {images.map((image, index) => (
                   <button
-                    onClick={prevImage}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label="Previous image"
+                    key={index}
+                    onClick={() => setCurrentImageIndex(index)}
+                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden ${
+                      index === currentImageIndex ? 'ring-2 ring-blue-500' : ''
+                    }`}
                   >
-                    <ChevronLeft className="w-6 h-6" />
+                    <img
+                      src={image}
+                      alt={`Product thumbnail ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
                   </button>
-                  <button
-                    onClick={nextImage}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label="Next image"
-                  >
-                    <ChevronRight className="w-6 h-6" />
-                  </button>
-                </>
-              )}
+                ))}
+              </div>
 
-              {/* Add this button below the carousel */}
-              <div className="flex justify-center mt-4">
+              {/* Arrows Container */}
+              <div className="flex justify-center gap-4 mt-4">
                 <button
-                  onClick={() => setShowVideo(true)}
-                  className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  onClick={prevImage}
+                  className="p-2 hover:bg-gray-100 rounded-full"
                 >
-                  <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
-                  </svg>
-                  Watch Video
+                  <ChevronLeft className="w-6 h-6 text-gray-600" />
+                </button>
+                <button
+                  onClick={nextImage}
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                >
+                  <ChevronRight className="w-6 h-6 text-gray-600" />
                 </button>
               </div>
             </div>
           )}
 
-          <p className="text-xl text-gray-600 mb-8">{settings.description}</p>
+          <p className="text-lg sm:text-xl md:text-2xl text-gray-600 mb-8 max-w-screen-md mx-auto leading-relaxed px-4">
+            {settings.description}
+          </p>
           
+          {/* Move video button here */}
+          <div className="flex justify-center mb-8">
+            <button
+              onClick={() => setShowVideo(true)}
+              className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
+              </svg>
+              Watch Video
+            </button>
+          </div>
+
           <div className="mt-6 mb-8 flex flex-col items-center">
             <div className="flex items-center gap-3">
               <span className="text-4xl font-extrabold text-green-600">${finalPrice}</span>

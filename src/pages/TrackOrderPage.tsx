@@ -31,7 +31,6 @@ export default function TrackOrderPage() {
 
       if (error) throw error;
       
-      console.log('Found orders:', data);
       setOrders(data || []);
       setSearched(true);
     } catch (err) {
