@@ -17,7 +17,7 @@ export const handler: Handler = async (event) => {
     const { customerName, orderNumber, amount, email } = JSON.parse(event.body || '{}');
 
     const messageData = {
-      from: `Ruby Store <${process.env.MAILGUN_FROM_EMAIL}>`,
+      from: `Solo Drops <${process.env.MAILGUN_FROM_EMAIL}>`,
       to: email,
       subject: 'Order Confirmation - Solo Drops',
       text: `
