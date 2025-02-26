@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useProductStore } from '../store/productStore';
 import { ImageIcon, DollarSign, Tag, Type, FileText, Trash2, Ruler, Scale, Box, Shield } from 'lucide-react';
@@ -36,6 +36,14 @@ export default function AdminPage() {
   const [newSpec, setNewSpec] = useState({ title: '', description: '', icon: 'ruler' });
   const [isAddingSpec, setIsAddingSpec] = useState(false);
 
+  const fetchInitialData = useCallback(async () => {
+    if (!session) return;
+    
+    if (!settings) await fetchSettings();
+    if (promotionalImages.length === 0) await fetchPromotionalImages();
+    if (specifications.length === 0) await fetchSpecifications();
+  }, [session, settings, promotionalImages.length, specifications.length]);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -51,12 +59,8 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (session) {
-      fetchSettings();
-      fetchPromotionalImages();
-      fetchSpecifications();
-    }
-  }, [session]);
+    fetchInitialData();
+  }, [fetchInitialData]);
 
   useEffect(() => {
     if (settings) {
@@ -120,10 +124,17 @@ export default function AdminPage() {
     setAdditionalImages(additionalImages.filter((_, i) => i !== index));
   };
 
-  const handleImageChange = (index: number, value: string) => {
+  const handleImageChange = async (index: number, value: string) => {
     const newImages = [...additionalImages];
     newImages[index] = value;
     setAdditionalImages(newImages);
+    
+    if (settings) {
+      await updateSettings({
+        ...settings,
+        additional_images: newImages
+      });
+    }
   };
 
   const handleQuickDiscount = async () => {
@@ -175,20 +186,23 @@ export default function AdminPage() {
     try {
       const { error } = await supabase
         .from('promotional_images')
-        .insert([
-          {
-            image_url: newImageUrl,
-            alt_text: newAltText
-          }
-        ]);
+        .insert([{
+          image_url: newImageUrl,
+          alt_text: newAltText
+        }]);
 
       if (error) throw error;
 
+      setPromotionalImages(prev => [...prev, {
+        id: Date.now(),
+        image_url: newImageUrl,
+        alt_text: newAltText,
+        created_at: new Date().toISOString()
+      }]);
+
       setNewImageUrl('');
       setNewAltText('');
-      fetchPromotionalImages();
     } catch (error) {
-      console.error('Error adding promotional image:', error);
       alert('Failed to add promotional image');
     } finally {
       setIsAddingImage(false);
@@ -217,16 +231,17 @@ export default function AdminPage() {
     setIsAddingSpec(true);
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('specifications')
-        .insert([newSpec]);
+        .insert([newSpec])
+        .select()
+        .single();
 
       if (error) throw error;
 
+      setSpecifications(prev => [...prev, data]);
       setNewSpec({ title: '', description: '', icon: 'ruler' });
-      fetchSpecifications();
     } catch (error) {
-      console.error('Error adding specification:', error);
       alert('Failed to add specification');
     } finally {
       setIsAddingSpec(false);
