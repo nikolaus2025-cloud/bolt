@@ -1,9 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useProductStore } from '../store/productStore';
-import { ImageIcon, DollarSign, Tag, Type, FileText } from 'lucide-react';
+import { ImageIcon, DollarSign, Tag, Type, FileText, Trash2, Ruler, Scale, Box, Shield } from 'lucide-react';
 import { Session } from '@supabase/supabase-js';
 import Orders from '../components/Orders';
+
+interface PromotionalImage {
+  id: number;
+  image_url: string;
+  alt_text: string;
+  created_at: string;
+}
+
+interface Specification {
+  id: number;
+  title: string;
+  description: string;
+  icon: string;
+}
 
 export default function AdminPage() {
   const { settings, isLoading, fetchSettings, updateSettings } = useProductStore();
@@ -13,6 +27,14 @@ export default function AdminPage() {
   const [isQuickActionLoading, setIsQuickActionLoading] = useState(false);
   const [additionalImages, setAdditionalImages] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('settings');
+  const [promotionalImages, setPromotionalImages] = useState<PromotionalImage[]>([]);
+  const [newImageUrl, setNewImageUrl] = useState('');
+  const [newAltText, setNewAltText] = useState('');
+  const [isAddingImage, setIsAddingImage] = useState(false);
+  const [previewPromoImage, setPreviewPromoImage] = useState('');
+  const [specifications, setSpecifications] = useState<Specification[]>([]);
+  const [newSpec, setNewSpec] = useState({ title: '', description: '', icon: 'ruler' });
+  const [isAddingSpec, setIsAddingSpec] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -31,6 +53,8 @@ export default function AdminPage() {
   useEffect(() => {
     if (session) {
       fetchSettings();
+      fetchPromotionalImages();
+      fetchSpecifications();
     }
   }, [session]);
 
@@ -112,6 +136,116 @@ export default function AdminPage() {
       alert('Failed to update discount. Please try again.');
     } finally {
       setIsQuickActionLoading(false);
+    }
+  };
+
+  const fetchPromotionalImages = async () => {
+    const { data, error } = await supabase
+      .from('promotional_images')
+      .select('*')
+      .order('created_at', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching promotional images:', error);
+      return;
+    }
+    
+    setPromotionalImages(data || []);
+  };
+
+  const fetchSpecifications = async () => {
+    const { data, error } = await supabase
+      .from('specifications')
+      .select('*')
+      .order('created_at', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching specifications:', error);
+      return;
+    }
+    
+    setSpecifications(data || []);
+  };
+
+  const handleAddPromotionalImage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAddingImage(true);
+
+    try {
+      const { error } = await supabase
+        .from('promotional_images')
+        .insert([
+          {
+            image_url: newImageUrl,
+            alt_text: newAltText
+          }
+        ]);
+
+      if (error) throw error;
+
+      setNewImageUrl('');
+      setNewAltText('');
+      fetchPromotionalImages();
+    } catch (error) {
+      console.error('Error adding promotional image:', error);
+      alert('Failed to add promotional image');
+    } finally {
+      setIsAddingImage(false);
+    }
+  };
+
+  const handleDeleteImage = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this promotional image?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('promotional_images')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      fetchPromotionalImages();
+    } catch (error) {
+      console.error('Error deleting promotional image:', error);
+      alert('Failed to delete promotional image');
+    }
+  };
+
+  const handleAddSpecification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAddingSpec(true);
+
+    try {
+      const { error } = await supabase
+        .from('specifications')
+        .insert([newSpec]);
+
+      if (error) throw error;
+
+      setNewSpec({ title: '', description: '', icon: 'ruler' });
+      fetchSpecifications();
+    } catch (error) {
+      console.error('Error adding specification:', error);
+      alert('Failed to add specification');
+    } finally {
+      setIsAddingSpec(false);
+    }
+  };
+
+  const handleDeleteSpecification = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this specification?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('specifications')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      fetchSpecifications();
+    } catch (error) {
+      console.error('Error deleting specification:', error);
+      alert('Failed to delete specification');
     }
   };
 
@@ -397,13 +531,6 @@ export default function AdminPage() {
                     <h3 className="text-lg font-medium text-gray-900">Quick Actions</h3>
                     <div className="space-y-2">
                       <button
-                        onClick={() => setPreviewImage(settings?.image_url || '')}
-                        disabled={isQuickActionLoading}
-                        className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Preview Current Image
-                      </button>
-                      <button
                         onClick={handleQuickDiscount}
                         disabled={isQuickActionLoading}
                         className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -419,6 +546,162 @@ export default function AdminPage() {
                       </button>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div className="mt-12 border-t pt-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Promotional Images</h2>
+                
+                <form onSubmit={handleAddPromotionalImage} className="mb-8 bg-white p-6 rounded-lg shadow">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Image URL</label>
+                      <input
+                        type="url"
+                        required
+                        value={newImageUrl}
+                        onChange={(e) => {
+                          setNewImageUrl(e.target.value);
+                          setPreviewPromoImage(e.target.value);
+                        }}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        placeholder="https://example.com/image.jpg"
+                      />
+                      {previewPromoImage && (
+                        <div className="mt-2 aspect-square rounded-lg overflow-hidden border border-gray-200">
+                          <img
+                            src={previewPromoImage}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                            onError={() => setPreviewPromoImage('')}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Alt Text</label>
+                      <input
+                        type="text"
+                        required
+                        value={newAltText}
+                        onChange={(e) => setNewAltText(e.target.value)}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        placeholder="Image description"
+                      />
+                      <div className="mt-4">
+                        <p className="text-sm text-gray-600 mb-2">Image Guidelines:</p>
+                        <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
+                          <li>Use square images (1:1 aspect ratio)</li>
+                          <li>Recommended size: 600x600px or larger</li>
+                          <li>Maximum file size: 5MB</li>
+                          <li>Formats: JPG, PNG, or WebP</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isAddingImage}
+                    className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+                  >
+                    {isAddingImage ? 'Adding...' : 'Add Promotional Image'}
+                  </button>
+                </form>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {promotionalImages.map((image) => (
+                    <div key={image.id} className="relative group">
+                      <div className="aspect-square rounded-lg overflow-hidden">
+                        <div className="w-full h-full relative">
+                          <img
+                            src={image.image_url}
+                            alt={image.alt_text}
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteImage(image.id)}
+                        className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-12 border-t pt-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Product Specifications</h2>
+                
+                <form onSubmit={handleAddSpecification} className="mb-8 bg-white p-6 rounded-lg shadow">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Title</label>
+                      <input
+                        type="text"
+                        required
+                        value={newSpec.title}
+                        onChange={(e) => setNewSpec({ ...newSpec, title: e.target.value })}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        placeholder="e.g., Dimensions"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Icon</label>
+                      <select
+                        value={newSpec.icon}
+                        onChange={(e) => setNewSpec({ ...newSpec, icon: e.target.value })}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      >
+                        <option value="ruler">Ruler (Dimensions)</option>
+                        <option value="scale">Scale (Weight)</option>
+                        <option value="box">Box (Material)</option>
+                        <option value="shield">Shield (Warranty)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700">Description</label>
+                    <input
+                      type="text"
+                      required
+                      value={newSpec.description}
+                      onChange={(e) => setNewSpec({ ...newSpec, description: e.target.value })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      placeholder="e.g., 12.5 x 8.5 x 4.5 inches"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isAddingSpec}
+                    className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+                  >
+                    {isAddingSpec ? 'Adding...' : 'Add Specification'}
+                  </button>
+                </form>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {specifications.map((spec) => (
+                    <div key={spec.id} className="flex items-start space-x-4 bg-white p-4 rounded-lg shadow">
+                      <div className="flex-shrink-0">
+                        {spec.icon === 'ruler' && <Ruler className="w-6 h-6 text-gray-400" />}
+                        {spec.icon === 'scale' && <Scale className="w-6 h-6 text-gray-400" />}
+                        {spec.icon === 'box' && <Box className="w-6 h-6 text-gray-400" />}
+                        {spec.icon === 'shield' && <Shield className="w-6 h-6 text-gray-400" />}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-sm font-medium text-gray-900">{spec.title}</h3>
+                        <p className="mt-1 text-sm text-gray-500">{spec.description}</p>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteSpecification(spec.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
             </>

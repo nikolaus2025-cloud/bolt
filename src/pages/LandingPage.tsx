@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, TouchEvent } from 'react';
 import { useProductStore } from '../store/productStore';
 import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
-import { ChevronLeft, ChevronRight, ArrowLeft, Loader2, Package } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowLeft, Loader2, Package, Ruler, Scale, Box, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { sendOrderConfirmationEmail } from '../lib/mailgun';
 
@@ -16,6 +16,20 @@ interface ShippingDetails {
   city: string;
   address: string;
   zipCode: string;
+}
+
+interface PromotionalImage {
+  id: number;
+  image_url: string;
+  alt_text: string;
+  created_at: string;
+}
+
+interface Specification {
+  id: number;
+  title: string;
+  description: string;
+  icon: string;
 }
 
 const COUNTRIES = [
@@ -93,6 +107,13 @@ export default function LandingPage() {
   });
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showVideo, setShowVideo] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const [showQuantityModal, setShowQuantityModal] = useState(false);
+  const [showFullScreen, setShowFullScreen] = useState(false);
+  const [promotionalImages, setPromotionalImages] = useState<PromotionalImage[]>([]);
+  const [selectedPromoImage, setSelectedPromoImage] = useState<PromotionalImage | null>(null);
+  const [specifications, setSpecifications] = useState<Specification[]>([]);
+  const [activeTab, setActiveTab] = useState('description');
   
   // Combine main image with additional images
   const images = settings ? [
@@ -102,6 +123,8 @@ export default function LandingPage() {
 
   useEffect(() => {
     fetchSettings();
+    fetchPromotionalImages();
+    fetchSpecifications();
   }, [fetchSettings]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -114,8 +137,13 @@ export default function LandingPage() {
     setStep(2);
   };
 
+  const calculateTotalPrice = (basePrice: number, discount: number, qty: number) => {
+    return (basePrice - discount) * qty;
+  };
+
   const handlePayPalTransaction = async () => {
-    const finalPrice = settings ? (settings.price - settings.discount) : 0;
+    if (!settings) return;
+    const totalAmount = calculateTotalPrice(settings.price, settings.discount, quantity);
     
     try {
       // @ts-ignore
@@ -129,7 +157,7 @@ export default function LandingPage() {
           return actions.order.create({
             purchase_units: [{
               amount: {
-                value: finalPrice.toString()
+                value: totalAmount.toFixed(2)
               }
             }]
           });
@@ -166,7 +194,7 @@ export default function LandingPage() {
               await sendOrderConfirmationEmail({
                 customerName: `${shippingDetails.firstName} ${shippingDetails.lastName}`,
                 orderNumber: orderData.id,
-                amount: settings ? (settings.price - settings.discount) : 0,
+                amount: totalAmount,
                 email: shippingDetails.email
               });
             } catch (emailError) {
@@ -245,17 +273,44 @@ export default function LandingPage() {
     document.getElementById('shipping-form')?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const fetchPromotionalImages = async () => {
+    const { data, error } = await supabase
+      .from('promotional_images')
+      .select('*')
+      .order('created_at', { ascending: true });
+      
+    if (error) {
+      console.error('Error fetching promotional images:', error);
+      return;
+    }
+    
+    setPromotionalImages(data || []);
+  };
+
+  const fetchSpecifications = async () => {
+    const { data, error } = await supabase
+      .from('specifications')
+      .select('*')
+      .order('created_at', { ascending: true });
+      
+    if (error) {
+      console.error('Error fetching specifications:', error);
+      return;
+    }
+    
+    setSpecifications(data || []);
+  };
+
   if (!settings) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
-        <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+        <Loader2 className="w-8 h-8 animate-spin text-[#317546]" />
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Loading...</h2>
         <p className="text-gray-500">Please wait while we prepare your experience</p>
       </div>
     );
   }
 
-  const finalPrice = settings.price - settings.discount;
   const isUSA = shippingDetails.country === 'usa';
 
   const nextImage = () => {
@@ -294,14 +349,184 @@ export default function LandingPage() {
     </div>
   );
 
+  const QuantityModal = () => (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={() => setShowQuantityModal(false)}
+    >
+      <div 
+        className="bg-white rounded-lg w-full max-w-xs p-4 relative"
+        onClick={e => e.stopPropagation()}
+      >
+        <button
+          onClick={() => setShowQuantityModal(false)}
+          className="absolute -top-2 -right-2 w-8 h-8 flex items-center justify-center bg-white rounded-full shadow-md hover:bg-gray-100"
+        >
+          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <h3 className="text-lg font-semibold mb-4 flex items-center">
+          <span className="text-green-600 mr-2">●</span>
+          In Stock
+        </h3>
+        
+        <div className="flex items-center justify-between border rounded-lg p-2 mb-4">
+          <button 
+            onClick={() => setQuantity(q => Math.max(1, q - 1))}
+            className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 rounded"
+          >
+            -
+          </button>
+          <span className="text-lg font-medium">{quantity}</span>
+          <button 
+            onClick={() => setQuantity(q => Math.min(10, q + 1))}
+            className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 rounded"
+          >
+            +
+          </button>
+        </div>
+
+        <button
+          onClick={() => setShowQuantityModal(false)}
+          className="w-full bg-[#ffa41c] hover:bg-[#f49b1a] text-black py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-[#f49b1a] focus:ring-offset-2"
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  );
+
+  const FullScreenImageViewer = () => {
+    const touchStart = useRef<number>(0);
+    const touchEnd = useRef<number>(0);
+
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStart.current = e.targetTouches[0].clientX;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      touchEnd.current = e.targetTouches[0].clientX;
+    };
+
+    const handleTouchEnd = () => {
+      const swipeDistance = touchStart.current - touchEnd.current;
+      const minSwipeDistance = 50;
+
+      if (Math.abs(swipeDistance) > minSwipeDistance) {
+        if (swipeDistance > 0) {
+          nextImage();
+        } else {
+          prevImage();
+        }
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-white z-50 flex flex-col">
+        {/* Header - Updated with white background */}
+        <div className="relative h-12 flex items-center px-4 border-b">
+          <button
+            onClick={() => setShowFullScreen(false)}
+            className="text-gray-800 flex items-center"
+          >
+            <ArrowLeft className="w-6 h-6 mr-2" />
+            Back
+          </button>
+        </div>
+
+        {/* Main Image */}
+        <div 
+          className="flex-1 flex items-center justify-center bg-white"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <img
+            src={images[currentImageIndex]}
+            alt={`${settings.title} - Image ${currentImageIndex + 1}`}
+            className="max-h-full max-w-full object-contain"
+          />
+        </div>
+
+        {/* Thumbnails Container with Arrows - Updated positioning */}
+        <div className="relative flex items-center justify-center mb-4">
+          {/* Left Arrow - Adjusted position */}
+          <button
+            onClick={prevImage}
+            className="absolute left-2 p-2 hover:bg-gray-100 rounded-full bg-white shadow-md z-10"
+          >
+            <ChevronLeft className="w-5 h-5 text-gray-600" />
+          </button>
+
+          {/* Thumbnails - Updated border color */}
+          <div className="flex justify-center gap-2 px-8">
+            {images.map((image, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentImageIndex(index)}
+                className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden ${
+                  index === currentImageIndex 
+                    ? 'ring-2 ring-[#232f3e] border border-[#232f3e]' 
+                    : 'border border-gray-100'
+                }`}
+              >
+                <img
+                  src={image}
+                  alt={`Product thumbnail ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </button>
+            ))}
+          </div>
+
+          {/* Right Arrow - Adjusted position */}
+          <button
+            onClick={nextImage}
+            className="absolute right-2 p-2 hover:bg-gray-100 rounded-full bg-white shadow-md z-10"
+          >
+            <ChevronRight className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const PromoImageViewer = () => {
+    return (
+      <div className="fixed inset-0 bg-white z-50 flex flex-col">
+        {/* Header */}
+        <div className="relative h-12 flex items-center px-4 border-b">
+          <button
+            onClick={() => setSelectedPromoImage(null)}
+            className="text-gray-800 flex items-center"
+          >
+            <ArrowLeft className="w-6 h-6 mr-2" />
+            Back
+          </button>
+        </div>
+
+        {/* Image */}
+        <div className="flex-1 flex items-center justify-center bg-white p-4">
+          <img
+            src={selectedPromoImage?.image_url}
+            alt={selectedPromoImage?.alt_text}
+            className="max-w-full max-h-full object-contain"
+          />
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <div className="flex items-center space-x-6">
             <Link to="/" className="text-xl font-bold text-gray-900 hover:text-gray-700">
-              Ruby Store
+              Solo Drops
             </Link>
           </div>
           <div className="flex items-center space-x-6">
@@ -328,61 +553,164 @@ export default function LandingPage() {
           {/* Image Slider */}
           {images.length > 0 && (
             <div className="max-w-2xl mx-auto py-8">
-              {/* Main Image Container - Updated to 336x600 */}
-              <div className="relative w-[344px] h-[628px] mb-4 mx-auto">
+              {/* Main Image Container - Make responsive */}
+              <div className="relative w-full max-w-[414px] h-[500px] mb-4 mx-auto">
+                {/* Best Choice Sticker */}
+                <div className="absolute -left-2 -top-2 z-10">
+                  <div className="bg-[#232f3e] text-white text-sm font-bold px-4 py-1.5 rounded-lg shadow-md transform -rotate-12 flex items-center">
+                    <svg 
+                      className="w-4 h-4 mr-1 text-yellow-400" 
+                      fill="currentColor" 
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                    Best Choice
+                  </div>
+                </div>
+
                 <img
                   src={images[currentImageIndex]}
                   alt={`${settings.title} - Image ${currentImageIndex + 1}`}
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-contain cursor-zoom-in"
+                  onClick={() => setShowFullScreen(true)}
                 />
               </div>
 
-              {/* Thumbnails Container */}
-              <div className="flex justify-center gap-2 mb-4">
-                {images.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentImageIndex(index)}
-                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden ${
-                      index === currentImageIndex ? 'ring-2 ring-blue-500' : ''
-                    }`}
-                  >
-                    <img
-                      src={image}
-                      alt={`Product thumbnail ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
-
-              {/* Arrows Container */}
-              <div className="flex justify-center gap-4 mt-4">
+              {/* Thumbnails Container with Arrows - Updated positioning */}
+              <div className="relative flex items-center justify-center mb-4">
+                {/* Left Arrow - Adjusted position */}
                 <button
                   onClick={prevImage}
-                  className="p-2 hover:bg-gray-100 rounded-full"
+                  className="absolute left-2 p-2 hover:bg-gray-100 rounded-full bg-white shadow-md z-10"
                 >
-                  <ChevronLeft className="w-6 h-6 text-gray-600" />
+                  <ChevronLeft className="w-5 h-5 text-gray-600" />
                 </button>
+
+                {/* Thumbnails - Updated border color */}
+                <div className="flex justify-center gap-2 px-8">
+                  {images.map((image, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentImageIndex(index)}
+                      className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden ${
+                        index === currentImageIndex 
+                          ? 'ring-2 ring-[#232f3e] border border-[#232f3e]' 
+                          : 'border border-gray-100'
+                      }`}
+                    >
+                      <img
+                        src={image}
+                        alt={`Product thumbnail ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+
+                {/* Right Arrow - Adjusted position */}
                 <button
                   onClick={nextImage}
-                  className="p-2 hover:bg-gray-100 rounded-full"
+                  className="absolute right-2 p-2 hover:bg-gray-100 rounded-full bg-white shadow-md z-10"
                 >
-                  <ChevronRight className="w-6 h-6 text-gray-600" />
+                  <ChevronRight className="w-5 h-5 text-gray-600" />
+                </button>
+              </div>
+
+              {/* Promotional Text - Centered with consistent spacing */}
+              <div className="space-y-6 text-sm text-gray-600 max-w-md mx-auto my-8">
+                <div className="flex items-center justify-center gap-3">
+                  <span className="bg-green-100 text-green-800 w-8 h-8 flex items-center justify-center rounded">
+                    🚚
+                  </span>
+                  <p>Free Shipping Worldwide</p>
+                </div>
+
+                <div className="flex items-center justify-center gap-3">
+                  <span className="bg-purple-100 text-purple-800 w-8 h-8 flex items-center justify-center rounded">
+                    🔒
+                  </span>
+                  <p>Secure Payment via PayPal</p>
+                </div>
+              </div>
+
+              {/* Quantity and Buy Now */}
+              <div className="flex flex-col items-center mt-6 mb-8">
+                <button
+                  onClick={() => setShowQuantityModal(true)}
+                  className="text-gray-800 mb-3 flex items-center hover:text-gray-600 border border-gray-300 rounded-md px-4 py-2 hover:border-gray-400 transition-colors"
+                >
+                  Quantity: {quantity}
+                </button>
+                
+                {/* Update Buy Now button to prevent overflow */}
+                <button
+                  onClick={scrollToForm}
+                  className="bg-[#ffd814] hover:bg-[#f7ca00] text-black text-lg sm:text-xl font-semibold px-8 sm:px-16 py-4 rounded-full shadow-md transition-colors w-full max-w-md"
+                >
+                  Buy Now
                 </button>
               </div>
             </div>
           )}
 
-          <p className="text-lg sm:text-xl md:text-2xl text-gray-600 mb-8 max-w-screen-md mx-auto leading-relaxed px-4">
-            {settings.description}
-          </p>
-          
-          {/* Move video button here */}
+          <div className="mb-12">
+            <div className="border-b border-gray-200">
+              <nav className="-mb-px flex space-x-8">
+                <button
+                  onClick={() => setActiveTab('description')}
+                  className={`${
+                    activeTab === 'description'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                >
+                  Description
+                </button>
+                <button
+                  onClick={() => setActiveTab('specifications')}
+                  className={`${
+                    activeTab === 'specifications'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                >
+                  Specifications
+                </button>
+              </nav>
+            </div>
+
+            <div className="mt-6">
+              {activeTab === 'description' ? (
+                <p className="text-lg sm:text-xl md:text-[1.0rem] text-gray-600 leading-relaxed px-4 text-left">
+                  {settings.description}
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-4">
+                  {specifications.map((spec) => (
+                    <div key={spec.id} className="flex items-start space-x-4">
+                      <div className="flex-shrink-0">
+                        {spec.icon === 'ruler' && <Ruler className="w-6 h-6 text-gray-400" />}
+                        {spec.icon === 'scale' && <Scale className="w-6 h-6 text-gray-400" />}
+                        {spec.icon === 'box' && <Box className="w-6 h-6 text-gray-400" />}
+                        {spec.icon === 'shield' && <Shield className="w-6 h-6 text-gray-400" />}
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-900">{spec.title}</h3>
+                        <p className="mt-1 text-sm text-gray-500">{spec.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Watch Video button */}
           <div className="flex justify-center mb-8">
             <button
               onClick={() => setShowVideo(true)}
-              className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              className="flex items-center px-4 py-2 bg-[#cc0c39] text-white rounded-lg hover:bg-[#a30a2e] transition-colors"
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
@@ -393,12 +721,16 @@ export default function LandingPage() {
 
           <div className="mt-6 mb-8 flex flex-col items-center">
             <div className="flex items-center gap-3">
-              <span className="text-4xl font-extrabold text-green-600">${finalPrice}</span>
+              <span className="text-4xl font-extrabold text-black">
+                ${calculateTotalPrice(settings.price, settings.discount, quantity).toFixed(2)}
+              </span>
               {settings.discount > 0 && (
                 <>
-                  <span className="text-2xl text-gray-500 line-through">${settings.price}</span>
+                  <span className="text-2xl text-gray-500 line-through">
+                    ${(settings.price * quantity).toFixed(2)}
+                  </span>
                   <span className="bg-red-600 text-white px-3 py-1 rounded-full text-lg font-bold animate-pulse">
-                    Save ${settings.discount}!
+                    Save ${(settings.discount * quantity).toFixed(2)}!
                   </span>
                 </>
               )}
@@ -408,41 +740,19 @@ export default function LandingPage() {
               Limited Time Offer! 🔥
             </div>
           </div>
-
-          <button
-            onClick={scrollToForm}
-            className="bg-blue-600 text-white text-lg font-semibold px-8 py-4 rounded-lg shadow-lg hover:bg-blue-700 transform transition hover:scale-105"
-          >
-            Buy Now
-          </button>
-
-          {/* Promotional Text */}
-          <div className="mt-8 space-y-4 text-sm text-gray-600">
-            <p className="flex items-center justify-center">
-              <span className="bg-green-100 text-green-800 px-2 py-1 rounded mr-2">🚚</span>
-              Free Shipping Worldwide
-            </p>
-            <p className="flex items-center justify-center">
-              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded mr-2">⚡️</span>
-              Instant Digital Delivery
-            </p>
-            <p className="flex items-center justify-center">
-              <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded mr-2">🔒</span>
-              Secure Payment via PayPal
-            </p>
-          </div>
         </div>
 
         {step === 1 ? (
-          <form id="shipping-form" onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-lg">
-            <div className="grid grid-cols-2 gap-6">
+          <form id="shipping-form" onSubmit={handleSubmit} className="bg-white p-4 sm:p-8 rounded-lg shadow-lg">
+            {/* Name Fields - Always 2 columns */}
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700">First Name</label>
                 <input
                   type="text"
                   name="firstName"
                   required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   value={shippingDetails.firstName}
                   onChange={handleInputChange}
                 />
@@ -453,43 +763,51 @@ export default function LandingPage() {
                   type="text"
                   name="lastName"
                   required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   value={shippingDetails.lastName}
                   onChange={handleInputChange}
                 />
               </div>
+            </div>
+
+            {/* Contact Fields */}
+            <div className="grid grid-cols-2 gap-3 mt-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Email</label>
                 <input
                   type="email"
                   name="email"
                   required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   value={shippingDetails.email}
                   onChange={handleInputChange}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+                <label className="block text-sm font-medium text-gray-700">Phone</label>
                 <input
                   type="tel"
                   name="phone"
                   required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   value={shippingDetails.phone}
                   onChange={handleInputChange}
                 />
               </div>
+            </div>
+
+            {/* Location Fields */}
+            <div className="grid grid-cols-2 gap-3 mt-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Country</label>
                 <select
                   name="country"
                   required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   value={shippingDetails.country}
                   onChange={handleInputChange}
                 >
-                  <option value="">Select a country</option>
+                  <option value="">Select</option>
                   {COUNTRIES.map(country => (
                     <option key={country.code} value={country.code}>
                       {country.name}
@@ -497,64 +815,70 @@ export default function LandingPage() {
                   ))}
                 </select>
               </div>
-              {isUSA ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">State</label>
-                  <select
-                    name="state"
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    value={shippingDetails.state}
-                    onChange={handleInputChange}
-                  >
-                    <option value="">Select a state</option>
-                    {US_STATES.map(state => (
-                      <option key={state.code} value={state.code}>
-                        {state.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">City</label>
-                  <input
-                    type="text"
-                    name="city"
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    value={shippingDetails.city}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              )}
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700">Address</label>
-                <input
-                  type="text"
-                  name="address"
-                  required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  value={shippingDetails.address}
-                  onChange={handleInputChange}
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700">ZIP Code</label>
-                <input
-                  type="text"
-                  name="zipCode"
-                  required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  value={shippingDetails.zipCode}
-                  onChange={handleInputChange}
-                />
+              <div>
+                {isUSA ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">State</label>
+                    <select
+                      name="state"
+                      required
+                      className="mt-1 block w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      value={shippingDetails.state}
+                      onChange={handleInputChange}
+                    >
+                      <option value="">Select</option>
+                      {US_STATES.map(state => (
+                        <option key={state.code} value={state.code}>
+                          {state.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">City</label>
+                    <input
+                      type="text"
+                      name="city"
+                      required
+                      className="mt-1 block w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      value={shippingDetails.city}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Full width fields */}
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700">Address</label>
+              <input
+                type="text"
+                name="address"
+                required
+                className="mt-1 block w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                value={shippingDetails.address}
+                onChange={handleInputChange}
+              />
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700">ZIP Code</label>
+              <input
+                type="text"
+                name="zipCode"
+                required
+                className="mt-1 block w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                value={shippingDetails.zipCode}
+                onChange={handleInputChange}
+              />
+            </div>
+
             <div className="mt-6">
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className="w-full bg-[#ffd814] hover:bg-[#f7ca00] text-black py-3 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-[#f7ca00] focus:ring-offset-2"
               >
                 Continue to Payment
               </button>
@@ -577,11 +901,40 @@ export default function LandingPage() {
             <div id="paypal-button-container"></div>
           </div>
         )}
+
+        {/* Promotional Images Section */}
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+            Why Choose Our Product?
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-[1024px] mx-auto px-4">
+            {promotionalImages.map((image) => (
+              <div 
+                key={image.id} 
+                onClick={() => setSelectedPromoImage(image)}
+                className="aspect-square w-full rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+              >
+                <div className="relative w-full h-full">
+                  <img
+                    src={image.image_url}
+                    alt={image.alt_text}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       <Footer />
 
       {showVideo && <VideoModal />}
+      {showQuantityModal && <QuantityModal />}
+      {showFullScreen && <FullScreenImageViewer />}
+      {selectedPromoImage && <PromoImageViewer />}
     </div>
   );
 }

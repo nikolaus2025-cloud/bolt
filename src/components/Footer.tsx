@@ -44,8 +44,8 @@ export default function Footer() {
           <div className="flex justify-center space-x-6">
             <img src="https://cdn-icons-png.flaticon.com/128/349/349221.png" alt="Visa" className="h-8" />
             <img src="https://cdn-icons-png.flaticon.com/128/349/349228.png" alt="Mastercard" className="h-8" />
-            <img src="https://cdn-icons-png.flaticon.com/128/349/349230.png" alt="PayPal" className="h-8" />
-            <img src="https://cdn-icons-png.flaticon.com/128/349/349222.png" alt="American Express" className="h-8" />
+            <img src="https://cdn-icons-png.flaticon.com/128/349/349230.png" alt="Discover" className="h-8" />
+            <img src="https://nikoog.s3.eu-north-1.amazonaws.com/paypal.png" alt="PayPal" className="h-8" />
           </div>
         </div>
 
