@@ -536,24 +536,19 @@ export default function LandingPage() {
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <div className="flex items-center space-x-6">
-            <Link to="/" className="text-xl font-bold text-gray-900 hover:text-gray-700">
+            <Link to="/" className="text-xl font-bold text-gray-900 hover:text-gray-700 font-['SF Pro Display']">
               Solo Drops
             </Link>
           </div>
           <div className="flex items-center space-x-6">
             <Link 
               to="/track" 
-              className="text-sm text-gray-600 hover:text-gray-900 flex items-center"
+              className="text-sm text-gray-600 hover:text-gray-900 flex items-center font-['SF Pro Display']"
             >
               <Package className="w-4 h-4 mr-1" />
               Track Order
             </Link>
-            <span className="text-sm text-gray-500">Limited Time Offer!</span>
-            {settings.discount > 0 && (
-              <span className="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                Save ${settings.discount}
-              </span>
-            )}
+            <span className="text-sm text-gray-500 font-['SF Pro Display']">Limited Time Offer!</span>
           </div>
         </div>
       </header>
