@@ -451,6 +451,9 @@ export default function AdminPage() {
                         <FileText className="w-5 h-5 mr-2" />
                         Product Description
                       </label>
+                      <p className="text-xs text-gray-500 mb-2">
+                        Use **text** for bold formatting (e.g., **Product Features:**)
+                      </p>
                       <textarea
                         name="description"
                         rows={4}

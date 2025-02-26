@@ -91,6 +91,20 @@ const US_STATES = [
   { code: 'WY', name: 'Wyoming' }
 ];
 
+const formatDescription = (text: string) => {
+  return text.split('\n').map((line, i) => {
+    // Replace **text** with bold formatting
+    const formattedLine = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    return (
+      <div 
+        key={i} 
+        dangerouslySetInnerHTML={{ __html: formattedLine }}
+        className="mb-2"
+      />
+    );
+  });
+};
+
 export default function LandingPage() {
   const { settings, fetchSettings } = useProductStore();
   const [step, setStep] = useState(1);
@@ -684,9 +698,9 @@ export default function LandingPage() {
 
             <div className="mt-6">
               {activeTab === 'description' ? (
-                <p className="text-lg sm:text-xl md:text-[1.0rem] text-gray-600 leading-relaxed px-4 text-left">
-                  {settings.description}
-                </p>
+                <div className="text-lg sm:text-xl md:text-[1.0rem] text-gray-600 leading-relaxed px-4 text-left">
+                  {formatDescription(settings.description)}
+                </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-4">
                   {specifications.map((spec) => (
