@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, TouchEvent } from 'react';
 import { useProductStore } from '../store/productStore';
 import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
-import { ChevronLeft, ChevronRight, ArrowLeft, Loader2, Package, Ruler, Scale, Box, Shield } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowLeft, Loader2, Package, Ruler, Scale, Box, Shield, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { sendOrderConfirmationEmail } from '../lib/mailgun';
 
@@ -321,33 +321,30 @@ export default function LandingPage() {
     setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
   };
 
-  const VideoModal = () => (
-    <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      onClick={() => setShowVideo(false)}
-    >
-      <div className="bg-white p-4 rounded-lg w-full max-w-3xl mx-4 relative" onClick={e => e.stopPropagation()}>
-        <button 
-          onClick={() => setShowVideo(false)}
-          className="absolute -top-4 -right-4 bg-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg hover:bg-gray-100"
-        >
-          <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-        <div className="relative pt-[56.25%]">
-          <iframe
-            className="absolute inset-0 w-full h-full"
-            src="https://www.youtube.com/embed/Zph7YXfjMhg?si=_DuTDPDblhSz8Jtc"
-            title="Product Video"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          ></iframe>
+  const VideoModal = () => {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+        <div className="relative w-full max-w-4xl bg-black rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowVideo(false)}
+            className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <div className="relative pt-[56.25%]">
+            {settings?.video_url && (
+              <iframe
+                src={settings.video_url.replace('watch?v=', 'embed/')}
+                className="absolute inset-0 w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const QuantityModal = () => (
     <div 
@@ -711,6 +708,7 @@ export default function LandingPage() {
             <button
               onClick={() => setShowVideo(true)}
               className="flex items-center px-4 py-2 bg-[#cc0c39] text-white rounded-lg hover:bg-[#a30a2e] transition-colors"
+              disabled={!settings?.video_url}
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />

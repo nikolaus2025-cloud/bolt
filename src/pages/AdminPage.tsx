@@ -95,6 +95,7 @@ export default function AdminPage() {
         discount: parseFloat(formData.get('discount') as string),
         image_url: formData.get('image_url') as string,
         additional_images: additionalImages,
+        video_url: formData.get('video_url') as string,
       };
 
       await updateSettings(newSettings);
@@ -441,6 +442,20 @@ export default function AdminPage() {
                         defaultValue={settings.description}
                         required
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                        <FileText className="w-5 h-5 mr-2" />
+                        YouTube Video URL
+                      </label>
+                      <input
+                        name="video_url"
+                        type="url"
+                        defaultValue={settings.video_url ?? ''}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        placeholder="https://www.youtube.com/watch?v=..."
                       />
                     </div>
 

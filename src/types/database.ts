@@ -12,6 +12,7 @@ export interface ProductSettings {
   created_at: string;
   updated_at: string;
   additional_images: string[];
+  video_url: string | null;
 }
 
 export interface Database {

@@ -57,7 +57,7 @@ export default function TrackOrderPage() {
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <div className="flex items-center space-x-6">
             <Link to="/" className="text-xl font-bold text-gray-900 hover:text-gray-700">
-              Ruby Store
+              Solo Drops
             </Link>
           </div>
           <Link 

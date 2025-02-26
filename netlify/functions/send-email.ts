@@ -19,7 +19,7 @@ export const handler: Handler = async (event) => {
     const messageData = {
       from: `Ruby Store <${process.env.MAILGUN_FROM_EMAIL}>`,
       to: email,
-      subject: 'Order Confirmation - Ruby Store',
+      subject: 'Order Confirmation - Solo Drops',
       text: `
         Dear ${customerName},
 
@@ -32,7 +32,7 @@ export const handler: Handler = async (event) => {
         We'll process your order shortly.
 
         Best regards,
-        Ruby Store Team
+        Solo Drops Team
       `
     };
 
