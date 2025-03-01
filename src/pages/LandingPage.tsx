@@ -167,13 +167,20 @@ export default function LandingPage() {
 
       // @ts-ignore
       await window.paypal.Buttons({
+        style: {
+          layout: 'vertical'
+        },
         createOrder: (_data: any, actions: any) => {
           return actions.order.create({
             purchase_units: [{
               amount: {
                 value: totalAmount.toFixed(2)
               }
-            }]
+            }],
+            // Add these options to remove shipping fields
+            application_context: {
+              shipping_preference: 'NO_SHIPPING'
+            }
           });
         },
         onApprove: async (data: any, actions: any) => {
